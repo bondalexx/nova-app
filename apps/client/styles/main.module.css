@@ -1,0 +1,13 @@
+.main {
+  background: #1a1a1e;
+  color: white;
+}
+
+.scroll::-webkit-scrollbar {
+  width: 5px;
+}
+
+.scroll::-webkit-scrollbar-thumb {
+  background: #3e3c41;
+  border-radius: 10px;
+}

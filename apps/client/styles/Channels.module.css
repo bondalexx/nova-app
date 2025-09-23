@@ -1,0 +1,7 @@
+.channel:hover .options {
+  visibility: visible;
+}
+
+.options {
+  visibility: hidden;
+}

@@ -1,0 +1,73 @@
+"use client";
+import { useState } from "react";
+
+import { LuMessageCirclePlus } from "react-icons/lu";
+import { SlOptions } from "react-icons/sl";
+import { FaUserFriends } from "react-icons/fa";
+
+import avatar from "@/public/avatar.png";
+import Image from "next/image";
+
+import styles from "@/styles/Channels.module.css";
+import mainStyles from "@/styles/main.module.css";
+
+const Channels = () => {
+  const [channels, setChannels] = useState([
+    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21,
+    23, 45, 46, 47,
+  ]);
+  return (
+    <div
+      className={`h-full w-[300px] flex flex-col text-white overflow-auto ${mainStyles.scroll}`}
+    >
+      <header className="px-[10px] pt-[8px] pb-[9px] border-b border-b-[#222225] w-full">
+        <button className="h-[32px] w-full bg-[#2b2a2a] outline-none hover:bg-[#333338] transition-all ease duration-300 text-white text-[14px] rounded-[10px] text-center cursor-pointer ">
+          Find or start a conversation
+        </button>
+      </header>
+      <section className="px-[6px] py-[10px] border-b border-b-[#222225]">
+        <div className="flex items-center gap-[10px] py-[10px] pl-[10px] rounded-10px w-full bg-[#2C2C30] hover:bg-[#19191b] cursor-pointer h-[38px] text-[15px] rounded-[10px] transition-all ease duration-300">
+          <FaUserFriends fontSize={20} />
+          <p>Friends</p>
+        </div>
+      </section>
+      <section className="py-[10px] px-[6px] flex flex-col">
+        <button className="h-[30px] bg-[#5865F2] hover:bg-[#4b56d1] active:bg-[#3e48af] transition-all ease duration-300 cursor-pointer rounded-[10px] text-[14px] flex items-center gap-[5px] justify-center">
+          <div>
+            <LuMessageCirclePlus color="white" fontSize={18} />
+          </div>{" "}
+          <span>Create a PM</span>
+        </button>
+        <p className="text-[14px] mt-[8px] pl-[10px] text-[#82838B] hover:text-[white] cursor-default transition-all ease duration-300">
+          Private message
+        </p>
+        <div className="flex flex-col w-full">
+          {channels.map((channel) => {
+            return (
+              <button
+                key={channel}
+                className={`h-[40px] w-full hover:bg-[#222225] active:bg-[#3b3b3b] transition-all ease duration-300 cursor-pointer rounded-[10px] text-[14px] flex items-center justify-between px-[10px] ${styles.channel}`}
+              >
+                <div className="flex items-center gap-[12px]">
+                  <Image
+                    src={avatar}
+                    height={32}
+                    width={32}
+                    alt={"logo"}
+                    className="rounded-[50%]"
+                  />
+                  <span>Channel {channel}</span>
+                </div>
+                <SlOptions
+                  className={`text-[#B2B2B2] hover:text-white ${styles.options}`}
+                />
+              </button>
+            );
+          })}
+        </div>
+      </section>
+    </div>
+  );
+};
+
+export default Channels;

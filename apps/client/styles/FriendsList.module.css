@@ -1,0 +1,4 @@
+.messageInput:focus {
+  outline: none;
+  border-color: #302d44;
+}

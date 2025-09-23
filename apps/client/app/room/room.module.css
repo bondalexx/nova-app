@@ -1,0 +1,27 @@
+.room .recievedMessage {
+  color: #9d9caf;
+  background-color: #19182b;
+}
+
+.room .message {
+  max-width: 300px;
+  border-radius: 30px;
+}
+
+.room .sentMessage {
+  color: white;
+  background-color: #4e38a2;
+}
+
+.messageInput:focus {
+  outline: none;
+  border-color: #302d44;
+}
+
+.sendIcon {
+  color: #c4c4c4;
+}
+
+.sendIcon:hover {
+  color: #ffffff;
+}
