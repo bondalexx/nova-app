@@ -5,6 +5,6 @@ import { getRoomMessages } from "../controllers/messages.controller";
 const router = Router();
 
 router.use(requireAuth);
-router.get("/rooms/:roomId/messages", getRoomMessages);
+router.get("/:roomId/", getRoomMessages);
 
 export default router;

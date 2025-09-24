@@ -9,52 +9,34 @@ async function ensureMember(roomId: string, userId: string) {
 
 /* ---------- GET /rooms/:roomId/messages ---------- */
 export async function getRoomMessages(req: Request, res: Response) {
-  try {
-    const me = req.user!.id;
-    const { roomId } = req.params;
+  const me = req.user?.id;
+  if (!me) return res.status(401).json({ error: "Unauthorized" });
+  const { roomId } = req.params;
+  const limit = Math.min(Number(req.query.limit ?? 30), 100);
+  const cursor = req.query.cursor as string | undefined;
 
-    const member = await ensureMember(roomId, me);
-    if (!member) return res.status(403).json({ error: "Forbidden" });
+  // verify membership
+  const member = await prisma.roomMember.findUnique({
+    where: { roomId_userId: { roomId, userId: me } },
+  });
+  if (!member) return res.status(403).json({ error: "Forbidden" });
 
-    const limit = Math.min(Number(req.query.limit ?? 50), 100);
-    const cursor = req.query.cursor as string | undefined;
+  const items = await prisma.message.findMany({
+    where: { roomId },
+    take: limit,
+    ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
+    orderBy: { createdAt: "desc" },
+    select: {
+      id: true,
+      roomId: true,
+      senderId: true,
+      content: true,
+      createdAt: true,
+      editedAt: true,
+      deletedAt: true,
+    },
+  });
 
-    const base = {
-      where: { roomId },
-      orderBy: { createdAt: "asc" as const },
-      take: limit,
-      include: {
-        user: {
-          select: { id: true, displayName: true, email: true, avatarUrl: true },
-        },
-      },
-    };
-
-    const messages = cursor
-      ? await prisma.message.findMany({
-          ...base,
-          cursor: { id: cursor },
-          skip: 1,
-        })
-      : await prisma.message.findMany(base);
-
-    const items = messages.map((m) => ({
-      id: m.id,
-      room: m.roomId,
-      message: m.content,
-      user: {
-        id: m.user.id,
-        displayName: m.user.displayName,
-        email: m.user.email,
-        avatarUrl: m.user.avatarUrl ?? undefined,
-      },
-      createdAt: m.createdAt.toISOString(),
-    }));
-
-    const nextCursor = items.length ? items[items.length - 1].id : null;
-    return res.json({ items, nextCursor });
-  } catch (e) {
-    console.error("[getRoomMessages]", e);
-    return res.status(500).json({ error: "Internal Server Error" });
-  }
+  const nextCursor = items.length === limit ? items[items.length - 1].id : null;
+  res.json({ items, nextCursor });
 }

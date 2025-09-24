@@ -6,50 +6,18 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL!;
 
 export const api = axios.create({
   baseURL: API_URL,
-  timeout: 15_000,
-  withCredentials: true, // allow refresh cookie
+  timeout: 15000,
+  withCredentials: true,
 });
 
 // Attach Authorization header
 api.interceptors.request.use((config) => {
-  const token = tokenProvider.access;
-
-  // Ensure headers exists
-  config.headers = config.headers ?? {};
-
-  // Helper to set a header regardless of type
-  const setHeader = (k: string, v: string) => {
-    if (config.headers instanceof AxiosHeaders) {
-      config.headers.set(k, v);
-    } else {
-      (config.headers as RawAxiosRequestHeaders)[k] = v;
-    }
-  };
-
-  // Set Authorization if we have a token
-  if (token) setHeader("Authorization", `Bearer ${token}`);
-
-  // Set Content-Type only when sending JSON (not FormData)
-  if (config.data && !(config.data instanceof FormData)) {
-    // don’t overwrite if already provided
-    if (
-      (config.headers instanceof AxiosHeaders &&
-        !config.headers.has("Content-Type")) ||
-      (!(config.headers instanceof AxiosHeaders) &&
-        !(config.headers as RawAxiosRequestHeaders)["Content-Type"])
-    ) {
-      setHeader("Content-Type", "application/json");
-    }
+  const token = tokenProvider.access; // reads from useAuth.getState()
+  if (token && config.headers) {
+    // use safe setter (AxiosHeaders or plain obj)
+    const h = config.headers as any;
+    if (!h.Authorization) h.Authorization = `Bearer ${token}`;
   }
-
-  // Optional: Accept JSON
-  if (config.headers instanceof AxiosHeaders) {
-    if (!config.headers.has("Accept"))
-      config.headers.set("Accept", "application/json");
-  } else if (!(config.headers as RawAxiosRequestHeaders)["Accept"]) {
-    (config.headers as RawAxiosRequestHeaders)["Accept"] = "application/json";
-  }
-
   return config;
 });
 

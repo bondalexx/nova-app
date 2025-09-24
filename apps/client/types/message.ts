@@ -4,4 +4,5 @@ export type Message = {
   from: string;
   createdAt: string;
   user: { id: string; email?: string; displayName?: string };
+  id: string;
 };

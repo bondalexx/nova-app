@@ -45,21 +45,30 @@ export const useRooms = create<RoomsState>((set, get) => ({
   },
 
   openDM: async (peerId) => {
+    // catch ONLY the network/HTTP part
+    let room: Room;
     try {
-      const room = await ensureDirect(peerId);
-      const exists = get().rooms.some((r) => r.id === room.id);
-      set({
-        rooms: exists ? get().rooms : [room, ...get().rooms],
-        selectedRoomId: room.id,
-      });
-
-      // 🔑 navigate to room page
-      redirect(`/channels/my/${room.id}`);
-
-      return room;
+      room = await ensureDirect(peerId);
     } catch (e) {
-      throw toAPIError(e);
+      throw toAPIError(e); // Axios/network -> APIError with message/status
     }
+
+    // Validate minimum shape before using it
+    if (!room?.id) {
+      // This will surface a clear message in the console instead of "Unknown error"
+      throw new Error("Room has no id");
+    }
+
+    // Keep state updates outside the catch to avoid masking bugs
+    set((state) => {
+      const exists = state.rooms.some((r) => r.id === room.id);
+      return {
+        rooms: exists ? state.rooms : [room, ...state.rooms],
+        selectedRoomId: room.id,
+      };
+    });
+
+    return room;
   },
 
   upsert: (room) =>

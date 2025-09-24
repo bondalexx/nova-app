@@ -1,9 +1,12 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { LuMessageCirclePlus } from "react-icons/lu";
 import { SlOptions } from "react-icons/sl";
 import { FaUserFriends } from "react-icons/fa";
+import { useRooms } from "@/stores/rooms";
+import FriendPicker from "../Modals/FriendPicker";
+import { useRouter } from "next/navigation";
 
 import avatar from "@/public/avatar.png";
 import Image from "next/image";
@@ -12,14 +15,31 @@ import styles from "@/styles/Channels.module.css";
 import mainStyles from "@/styles/main.module.css";
 
 const Channels = () => {
-  const [channels, setChannels] = useState([
-    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21,
-    23, 45, 46, 47,
-  ]);
+  const router = useRouter();
+  const { rooms, status, error, load, select, selectedRoomId, openDM } =
+    useRooms();
+  const [showPicker, setShowPicker] = useState(false);
+
+  const onPickFriend = async (peerId: string) => {
+    setShowPicker(false);
+    await openDM(peerId); // ensures DM and selects it
+  };
+
+  useEffect(() => {
+    load().catch(() => {});
+  }, [load]);
+  console.log(rooms);
+
   return (
     <div
       className={`h-full w-[300px] flex flex-col text-white overflow-auto ${mainStyles.scroll}`}
     >
+      {showPicker && (
+        <FriendPicker
+          onPick={onPickFriend}
+          onClose={() => setShowPicker(false)}
+        />
+      )}
       <header className="px-[10px] pt-[8px] pb-[9px] border-b border-b-[#222225] w-full">
         <button className="h-[32px] w-full bg-[#2b2a2a] outline-none hover:bg-[#333338] transition-all ease duration-300 text-white text-[14px] rounded-[10px] text-center cursor-pointer ">
           Find or start a conversation
@@ -32,7 +52,10 @@ const Channels = () => {
         </div>
       </section>
       <section className="py-[10px] px-[6px] flex flex-col">
-        <button className="h-[30px] bg-[#5865F2] hover:bg-[#4b56d1] active:bg-[#3e48af] transition-all ease duration-300 cursor-pointer rounded-[10px] text-[14px] flex items-center gap-[5px] justify-center">
+        <button
+          onClick={() => setShowPicker(true)}
+          className="h-[30px] bg-[#5865F2] hover:bg-[#4b56d1] active:bg-[#3e48af] transition-all ease duration-300 cursor-pointer rounded-[10px] text-[14px] flex items-center gap-[5px] justify-center"
+        >
           <div>
             <LuMessageCirclePlus color="white" fontSize={18} />
           </div>{" "}
@@ -42,11 +65,14 @@ const Channels = () => {
           Private message
         </p>
         <div className="flex flex-col w-full">
-          {channels.map((channel) => {
+          {rooms.map((room) => {
             return (
               <button
-                key={channel}
+                key={room.id}
                 className={`h-[40px] w-full hover:bg-[#222225] active:bg-[#3b3b3b] transition-all ease duration-300 cursor-pointer rounded-[10px] text-[14px] flex items-center justify-between px-[10px] ${styles.channel}`}
+                onClick={() => {
+                  router.push(`/channels/my/${room.id}`);
+                }}
               >
                 <div className="flex items-center gap-[12px]">
                   <Image
@@ -56,7 +82,7 @@ const Channels = () => {
                     alt={"logo"}
                     className="rounded-[50%]"
                   />
-                  <span>Channel {channel}</span>
+                  <span>Channel {room.id}</span>
                 </div>
                 <SlOptions
                   className={`text-[#B2B2B2] hover:text-white ${styles.options}`}

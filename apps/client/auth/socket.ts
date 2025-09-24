@@ -3,24 +3,30 @@ import { io, Socket } from "socket.io-client";
 import { useAuth } from "@/stores/authStore";
 
 let socket: Socket | null = null;
+let lastToken: string | null = null;
 
-export function ensureSocket() {
+export function ensureSocket(): Socket | null {
   const token = useAuth.getState().accessToken;
   if (!token) return null;
 
-  if (!socket) {
-    socket = io(process.env.NEXT_PUBLIC_API_URL!, {
-      auth: { token },
-      withCredentials: true,
-    });
+  const tokenChanged = token !== lastToken;
 
-    // if token changes (after refresh), update & reconnect
-    useAuth.subscribe((s) => {
-      if (socket && s.accessToken) {
-        socket.auth = { token: s.accessToken };
-        if (!socket.connected) socket.connect();
-      }
+  if (!socket || tokenChanged) {
+    if (socket) {
+      socket.off(); // remove handlers (HMR-safe)
+      socket.disconnect(); // drop old SID
+    }
+    socket = io(process.env.NEXT_PUBLIC_API_URL!, {
+      path: "/socket.io", // <— must match server
+      transports: ["websocket"], // <— prefer websocket in dev
+      withCredentials: true,
+      auth: { token },
+      reconnection: true,
+      reconnectionAttempts: Infinity,
+      forceNew: true, // <— always get a fresh SID after token change
     });
+    lastToken = token;
   }
+
   return socket;
 }

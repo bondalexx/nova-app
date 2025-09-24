@@ -7,11 +7,7 @@ const Message = ({ message }: { message: MessageTypeAlias }) => {
   const { user } = useAuth();
   if (!user) return null;
   return (
-    <div
-      className={`w-full flex ${
-        user.id === message.user.id ? "justify-end" : "justify-start"
-      } `}
-    >
+    <div className={`w-full flex  `}>
       {user.id === message.user.id ? (
         <SentMessage message={message} user={user} />
       ) : (

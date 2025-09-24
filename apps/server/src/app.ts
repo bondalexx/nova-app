@@ -23,6 +23,7 @@ app.use("/auth", authRoutes);
 app.use("/rooms", roomsRoutes);
 app.use("/", friendsRoutes);
 app.use("/", usersRoutes);
+app.use("/messages", messagesRoutes);
 
 // Healthcheck
 app.get("/health", (_req, res) => res.json({ ok: true }));

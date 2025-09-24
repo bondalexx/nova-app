@@ -3,172 +3,113 @@ import http from "http";
 import app from "./app";
 import jwt from "jsonwebtoken";
 import { prisma } from "./lib/prisma";
+import { Server } from "socket.io";
 
 const PORT = Number(process.env.PORT ?? 4000);
 const CORS_ORIGIN = process.env.CORS_ORIGIN ?? "http://localhost:3000";
+
 const server = http.createServer(app);
 
-const { Server } = require("socket.io");
-
-const io = new Server(server, {
+export const io = new Server(server, {
+  path: "/socket.io", // <— match client
+  transports: ["websocket", "polling"],
   cors: {
     origin: CORS_ORIGIN,
     credentials: true,
   },
+  // (optional) tune dev keepalive; defaults are fine
+  pingTimeout: 20000,
+  pingInterval: 25000,
 });
 
-io.use(async (socket, next) => {
+io.use((socket, next) => {
   try {
-    const token = socket.handshake.auth?.token as string | undefined;
-    if (!token) return next(new Error("No token"));
+    const raw =
+      (socket.handshake.auth?.token as string | undefined) ||
+      (socket.handshake.headers?.authorization as string | undefined);
 
-    const payload = jwt.verify(token, process.env.JWT_ACCESS_SECRET! ) as { sub: string; email?: string };
+    if (!raw) return next(new Error("Unauthorized: no token"));
+    const token = raw.startsWith("Bearer ") ? raw.slice(7) : raw;
 
-    // Load minimal profile from DB (recommended so you get displayName, etc.)
-    const user = await prisma.user.findUnique({ where: { id: payload.sub } });
-    if (!user) return next(new Error("User not found"));
-
-    socket.data.user = {
-      id: user.id,
-      displayName: user.displayName,
-      email: user.email,
-    };
-
-    next();
-  } catch (e) {
-    next(new Error("Auth failed"));
+    const payload = jwt.verify(token, process.env.JWT_SECRET!); // HS256
+    // @ts-expect-error
+    socket.user = { id: (payload as any).sub };
+    return next();
+  } catch (err: any) {
+    console.error("[io.auth] verify failed:", err?.message);
+    return next(new Error(`Unauthorized: ${err?.message || "verify failed"}`));
   }
 });
 
 io.on("connection", (socket) => {
-  console.log(`User Connected: ${socket.id}`, socket.data.user);
+  const me = (socket as any).user.id as string;
+  console.log("[io] connect", socket.id, "user:", me);
 
-  // one-time: tell the client “who am I”
-  socket.emit("session", socket.data.user);
+  socket.emit("session", { id: me });
 
-  socket.on("join_room", (roomId: string) => {
-    console.log(roomId)
-    // (optional) check membership in DB before joining
+  socket.on("join_room", async (roomId: string) => {
+    if (!roomId) return;
+    const member = await prisma.roomMember.findUnique({
+      where: { roomId_userId: { roomId, userId: me } },
+      select: { roomId: true },
+    });
+    if (!member) return;
     socket.join(roomId);
+    console.log("[io] join", socket.id, "room:", roomId);
   });
 
-  socket.on("send_message", (data: { room: string; message: string }) => {
-    const sender = socket.data.user;     // trusted
-    if (!sender?.id) return;
+  socket.on(
+    "send_message",
+    async (
+      payload: { room: string; message: string; replyToId?: string },
+      ack?: (saved: any) => void
+    ) => {
+      try {
+        const { room, message, replyToId } = payload;
+        if (!room || !message?.trim()) return;
 
-    // (optional) persist to DB here with sender.id & data.room
+        const member = await prisma.roomMember.findUnique({
+          where: { roomId_userId: { roomId: room, userId: me } },
+          select: { roomId: true },
+        });
+        if (!member) return;
 
-    io.to(data.room).emit("receive_message", {
-      room: data.room,
-      message: data.message,
-      user: sender,                      // <- attach trusted user
-      from: socket.id,
-      createdAt: new Date().toISOString()
-    });
+        const saved = await prisma.message.create({
+          data: {
+            roomId: room,
+            senderId: me,
+            content: message.trim(),
+            replyToId: replyToId ?? null,
+          },
+        });
+
+        await prisma.room.update({
+          where: { id: room },
+          data: { lastMessageAt: saved.createdAt },
+        });
+
+        const payloadOut = {
+          id: saved.id,
+          roomId: room,
+          senderId: me,
+          content: saved.content,
+          createdAt: saved.createdAt,
+        };
+
+        io.to(room).emit("message:new", payloadOut);
+        ack?.(payloadOut);
+      } catch (e) {
+        console.error("[socket.send_message]", e);
+        ack?.({ error: "Failed to send" });
+      }
+    }
+  );
+
+  socket.on("disconnect", (reason) => {
+    console.log("[io] disconnect", socket.id, reason);
   });
 });
 
 server.listen(PORT, () => {
   console.log(`listening on *:${PORT}`);
 });
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// // middlewares
-// app.use(cors({ origin: CORS_ORIGIN, credentials: true }));
-// app.use(express.json());
-
-// // health: checks server + DB
-// app.get("/health", async (_req, res) => {
-//   try {
-//     await prisma.$queryRaw`SELECT 1`;
-//     res.json({ ok: true, db: "ok" });
-//   } catch (e) {
-//     res.status(500).json({ ok: false, db: "fail" });
-//   }
-// });
-
-// // quick DB routes
-// app.get("/users/count", async (_req, res, next) => {
-//   try {
-//     const count = await prisma.user.count();
-//     res.json({ count });
-//   } catch (e) {
-//     next(e);
-//   }
-// });
-
-// app.get("/users", async (_req, res, next) => {
-//   try {
-//     const users = await prisma.user.findMany({
-//       select: { id: true, email: true, displayName: true, createdAt: true },
-//       orderBy: { createdAt: "desc" },
-//     });
-//     res.json(users);
-//   } catch (e) {
-//     next(e);
-//   }
-// });
-
-// // simple error handler
-// app.use((err: any, _req: any, res: any, _next: any) => {
-//   console.error(err);
-//   res.status(500).json({ error: "Internal Server Error" });
-// });
-
-// const io = new Server(app, { cors: { origin: CORS_ORIGIN } });
-// io.on("connection", (socket) => {
-//   console.log(`User Connected: ${socket.id}`);
-// });
-
-
-// const server = app.listen(PORT, async () => {
-//   // optional: small startup check
-//   try {
-//     const users = await prisma.user.findMany({ take: 1 });
-//     console.log(`[server] up on http://localhost:${PORT} — prisma OK, users sample:`, users.length);
-//   } catch (e) {
-//     console.error("[server] started but prisma check failed:", e);
-//   }
-// });
-
-
-
-// // graceful shutdown
-// process.on("SIGINT", async () => {
-//   console.log("\n[server] shutting down…");
-//   server.close();
-//   await prisma.$disconnect();
-//   process.exit(0);
-// });
-// process.on("SIGTERM", async () => {
-//   server.close();
-//   await prisma.$disconnect();
-//   process.exit(0);
-// });
