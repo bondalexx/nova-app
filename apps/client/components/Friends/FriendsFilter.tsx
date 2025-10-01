@@ -1,9 +1,10 @@
 import { Dispatch, SetStateAction, useState } from "react";
-import { IoPersonAddSharp } from "react-icons/io5";
-import { FaUserFriends } from "react-icons/fa";
-import { LuMessageCirclePlus } from "react-icons/lu";
+
 import { useFriends } from "@/stores/friendsStore";
 import { Filter } from "@/types/friends";
+
+import { FaUserFriends } from "react-icons/fa";
+import { LuMessageCirclePlus } from "react-icons/lu";
 
 const FriendsFilter = ({
   setAddFriend,
@@ -17,6 +18,7 @@ const FriendsFilter = ({
   setActiveFilter: Dispatch<SetStateAction<Filter>>;
 }) => {
   const { friends } = useFriends();
+
   return (
     <div className="flex h-[50px] items-center border-b border-b-[#222225] px-[20px] justify-between ">
       <div className="flex items-center gap-[8px]">

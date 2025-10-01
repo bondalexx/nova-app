@@ -7,6 +7,7 @@ import { FaUserFriends } from "react-icons/fa";
 import { useRooms } from "@/stores/rooms";
 import FriendPicker from "../Modals/FriendPicker";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/stores/authStore";
 
 import avatar from "@/public/avatar.png";
 import Image from "next/image";
@@ -18,6 +19,7 @@ const Channels = () => {
   const router = useRouter();
   const { rooms, status, error, load, select, selectedRoomId, openDM } =
     useRooms();
+  const { user } = useAuth();
   const [showPicker, setShowPicker] = useState(false);
 
   const onPickFriend = async (peerId: string) => {
@@ -46,7 +48,10 @@ const Channels = () => {
         </button>
       </header>
       <section className="px-[6px] py-[10px] border-b border-b-[#222225]">
-        <div className="flex items-center gap-[10px] py-[10px] pl-[10px] rounded-10px w-full bg-[#2C2C30] hover:bg-[#19191b] cursor-pointer h-[38px] text-[15px] rounded-[10px] transition-all ease duration-300">
+        <div
+          onClick={() => router.push("/channels/my/")}
+          className="flex items-center gap-[10px] py-[10px] pl-[10px] rounded-10px w-full bg-[#2C2C30] hover:bg-[#19191b] cursor-pointer h-[38px] text-[15px] rounded-[10px] transition-all ease duration-300"
+        >
           <FaUserFriends fontSize={20} />
           <p>Friends</p>
         </div>
@@ -66,23 +71,28 @@ const Channels = () => {
         </p>
         <div className="flex flex-col w-full">
           {rooms.map((room) => {
+            const other = room.members.find(
+              (m) => m.user.id !== user?.id
+            )?.user;
+
             return (
               <button
                 key={room.id}
-                className={`h-[40px] w-full hover:bg-[#222225] active:bg-[#3b3b3b] transition-all ease duration-300 cursor-pointer rounded-[10px] text-[14px] flex items-center justify-between px-[10px] ${styles.channel}`}
+                className={`h-[48px] w-full hover:bg-[#222225] active:bg-[#3b3b3b] transition-all ease duration-300 cursor-pointer rounded-[10px] text-[14px] flex items-center justify-between px-[10px] ${styles.channel}`}
                 onClick={() => {
+                  select(room.id);
                   router.push(`/channels/my/${room.id}`);
                 }}
               >
                 <div className="flex items-center gap-[12px]">
                   <Image
-                    src={avatar}
+                    src={other?.avatarUrl ?? avatar} // fallback to default
                     height={32}
                     width={32}
-                    alt={"logo"}
+                    alt={other?.displayName ?? "avatar"}
                     className="rounded-[50%]"
                   />
-                  <span>Channel {room.id}</span>
+                  <span>{other?.displayName ?? "Unknown"}</span>
                 </div>
                 <SlOptions
                   className={`text-[#B2B2B2] hover:text-white ${styles.options}`}

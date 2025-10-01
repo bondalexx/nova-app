@@ -5,10 +5,15 @@ import { useAuth } from "@/stores/authStore";
 import User from "@/types/user";
 const Message = ({ message }: { message: MessageTypeAlias }) => {
   const { user } = useAuth();
+  console.log(message);
   if (!user) return null;
   return (
-    <div className={`w-full flex  `}>
-      {user.id === message.user.id ? (
+    <div
+      className={`w-full flex ${
+        user.id === message.sender.id ? "justify-end" : "justify-start"
+      } `}
+    >
+      {user.id === message.sender.id ? (
         <SentMessage message={message} user={user} />
       ) : (
         <RecievedMessage message={message} user={user} />
@@ -28,15 +33,15 @@ export const SentMessage = ({
 }) => {
   return (
     <div className="max-w-[350px] relative pr-[50px]">
-      <div className="flex flex-col max-w-[calc(100%-50px)] items-start">
+      <div className="flex flex-col  items-start">
         <span
           className={`px-[25px] py-[10px] rounded-[20px] leading-[30px] inline-block w-auto ${
-            user.id === message.user.id
+            user.id === message.sender.id
               ? "bg-[#4E38A2] text-white"
               : "bg-[#19182B] text-[#9D9CAF]"
           } `}
         >
-          {message.message}
+          {message.content}
         </span>
       </div>
       <Image
@@ -68,16 +73,16 @@ export const RecievedMessage = ({
       />
       <div className="flex flex-col max-w-[calc(100%-50px)] items-start">
         <span className="text-[12px] text-[#9D9CAF]">
-          {message.user.displayName}
+          {message.sender.displayName}
         </span>
         <span
           className={`px-[25px] py-[10px]  rounded-[20px] leading-[30px] inline-block w-auto ${
-            user.id === message.user.id
+            user.id === message.sender.id
               ? "bg-[#4E38A2] text-white"
               : "bg-[#19182B] text-[#9D9CAF]"
           } `}
         >
-          {message.message}
+          {message.content}
         </span>
       </div>
     </div>

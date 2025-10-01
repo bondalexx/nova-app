@@ -24,7 +24,7 @@ export default function ChannelLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <div className={` antialiased flex gap-[20px] bg-[#121214] w-full h-full`}>
+    <div className={` antialiased flex gap-[20px] w-full h-full`}>
       <AsideNav />
       <AuthBootstrap>{children}</AuthBootstrap>
     </div>

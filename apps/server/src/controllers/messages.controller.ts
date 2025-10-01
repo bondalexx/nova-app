@@ -34,6 +34,7 @@ export async function getRoomMessages(req: Request, res: Response) {
       createdAt: true,
       editedAt: true,
       deletedAt: true,
+      sender: { select: { id: true, displayName: true, avatarUrl: true } },
     },
   });
 

@@ -30,7 +30,7 @@ const My = () => {
   }, [accessToken, user, getFriends]);
 
   return (
-    <div className="w-[calc(100%-300px)] h-full text-[white] bg-[#1A1A1E] flex flex-col gap-[20px]">
+    <div className="w-[calc(100%-300px)] h-full text-[white] bg-[#0E0D15] flex flex-col gap-[20px] rounded-r-[11px]">
       <div className=" flex flex-col gap-[10px]">
         <FriendsFilter
           setAddFriend={setAddFriend}

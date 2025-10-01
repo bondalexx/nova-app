@@ -1,6 +1,16 @@
-import axios, { AxiosError, AxiosHeaders, RawAxiosRequestHeaders } from "axios";
+// api/client/axios.ts
+import axios, { AxiosError, AxiosRequestConfig } from "axios";
 import { APIError } from "./errors";
 import { tokenProvider } from "./tokenProvider";
+import { useLoading } from "@/stores/loading";
+
+declare module "axios" {
+  export interface AxiosRequestConfig {
+    showLoading?: boolean;
+    _retry?: boolean;
+    __loadingCounted?: boolean; // internal
+  }
+}
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL!;
 
@@ -10,65 +20,99 @@ export const api = axios.create({
   withCredentials: true,
 });
 
-// Attach Authorization header
+/* --------------------- REQUEST --------------------- */
 api.interceptors.request.use((config) => {
-  const token = tokenProvider.access; // reads from useAuth.getState()
+  const token = tokenProvider.access;
   if (token && config.headers) {
     // use safe setter (AxiosHeaders or plain obj)
     const h = config.headers as any;
     if (!h.Authorization) h.Authorization = `Bearer ${token}`;
   }
+
+  // Only count once per actual network attempt
+  if (config.showLoading !== false && !config.__loadingCounted) {
+    useLoading.getState().start();
+    config.__loadingCounted = true;
+  }
   return config;
 });
 
-// Refresh-once logic
+/* --------------------- REFRESH QUEUE --------------------- */
 let isRefreshing = false;
-let pendingQueue: Array<() => void> = [];
+let waiters: Array<() => void> = [];
+const waitForRefresh = () => new Promise<void>((r) => waiters.push(r));
+const releaseWaiters = () => {
+  waiters.forEach((fn) => fn());
+  waiters = [];
+};
 
-function flushQueue() {
-  pendingQueue.forEach((res) => res());
-  pendingQueue = [];
-}
-
+/* --------------------- RESPONSE --------------------- */
 api.interceptors.response.use(
-  (res) => res,
+  // SUCCESS → always end if we counted
+  (res) => {
+    if (res.config.__loadingCounted) {
+      useLoading.getState().end();
+      res.config.__loadingCounted = false;
+    }
+    return res;
+  },
+  // ERROR
   async (error: AxiosError<any>) => {
-    const original = error.config!;
-    const status = error.response?.status ?? 0;
+    const original = error.config as AxiosRequestConfig;
 
-    // Wrap known errors with APIError
-    if (status !== 401 || (original as any)?._retry) {
+    // If it's not a 401 or we've already retried, end & throw
+    if ((error.response?.status ?? 0) !== 401 || original._retry) {
+      if (original.__loadingCounted) {
+        useLoading.getState().end();
+        original.__loadingCounted = false;
+      }
       const message =
         (error.response?.data as any)?.error ??
         error.message ??
         "Network error";
-      throw new APIError(message, status, error.response?.data);
+      throw new APIError(
+        message,
+        error.response?.status ?? 0,
+        error.response?.data
+      );
     }
 
-    // 401 handling with single refresh
-    if (!isRefreshing) {
-      isRefreshing = true;
-      try {
+    // 401: try a single refresh for the whole herd
+    original._retry = true;
+
+    try {
+      if (!isRefreshing) {
+        isRefreshing = true;
         const newToken = await tokenProvider.refresh();
         if (!newToken) {
           tokenProvider.clear();
           throw new APIError("Unauthorized", 401);
         }
-      } finally {
-        isRefreshing = false;
-        flushQueue();
+      } else {
+        // Wait for the in-flight refresh to complete
+        await waitForRefresh();
       }
-    } else {
-      // wait until refresh finishes
-      await new Promise<void>((resolve) => pendingQueue.push(resolve));
+    } catch (e) {
+      // Refresh failed → end & rethrow
+      if (original.__loadingCounted) {
+        useLoading.getState().end();
+        original.__loadingCounted = false;
+      }
+      throw e instanceof APIError ? e : new APIError("Unauthorized", 401);
+    } finally {
+      if (isRefreshing) {
+        isRefreshing = false;
+        releaseWaiters();
+      }
     }
 
-    (original as any)._retry = true;
-    return api(original); // replay request with new token
+    // Replay the original request WITH the same loading ticket still active.
+    // The success/error handlers above will `end()` it when this attempt finishes.
+    return api(original);
   }
 );
 
-// Helper to normalize errors in `try/catch`
+/* --------------------- Helper --------------------- */
 export function toAPIError(err: unknown): APIError {
   if (err instanceof APIError) return err;
   if (axios.isAxiosError(err)) {

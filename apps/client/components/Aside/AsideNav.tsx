@@ -20,7 +20,13 @@ const AsideNav = () => {
           onClick={() => redirect("/channels/my")}
           className="w-[40px] h-[40px] flex justify-center items-center rounded-[10px] cursor-pointer  bg-[#090913] "
         >
-          <Image src={logo} height={40} width={40} alt={"logo"} className="" />
+          <Image
+            src={logo}
+            height={40}
+            width={40}
+            alt={"logo"}
+            className="hover:scale-110 transition-all ease duration-300"
+          />
         </div>
         <div className="w-[32px] h-[1px] bg-[#222225] "></div>
       </div>
