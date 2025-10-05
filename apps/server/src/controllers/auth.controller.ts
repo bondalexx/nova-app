@@ -47,6 +47,7 @@ export async function signup(req: Request, res: Response) {
 
 export async function signin(req: Request, res: Response) {
   const parsed = signinSchema.safeParse(req.body);
+  console.log(parsed);
 
   if (!parsed.success)
     return res.status(400).json({ error: parsed.error.flatten() });

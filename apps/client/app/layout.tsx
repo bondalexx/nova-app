@@ -1,9 +1,6 @@
 import AuthBootstrap from "./providers/AuthBootstrap";
 import "./globals.css";
 import { Nunito } from "next/font/google";
-import { useAuth } from "@/stores/authStore";
-import { useEffect } from "react";
-import { getSocket } from "@/realtime/socket";
 
 const nunito = Nunito({
   subsets: ["latin"],
@@ -18,7 +15,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={` ${nunito.className} antialiased flex gap-[20px] bg-[#121214] w-screen h-screen p-[15px]`}
+        className={` ${nunito.className} antialiased flex gap-[20px] bg-[#0D070F]  w-screen h-screen p-[15px] overflow-hidden `}
       >
         <AuthBootstrap>{children}</AuthBootstrap>
       </body>

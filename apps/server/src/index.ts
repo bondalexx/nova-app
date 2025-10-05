@@ -31,7 +31,7 @@ io.use((socket, next) => {
     if (!raw) return next(new Error("Unauthorized: no token"));
     const token = raw.startsWith("Bearer ") ? raw.slice(7) : raw;
 
-    const payload = jwt.verify(token, process.env.JWT_SECRET!); // HS256
+    const payload = jwt.verify(token, process.env.JWT_ACCESS_SECRET!); // HS256
     // @ts-expect-error
     socket.user = { id: (payload as any).sub };
     return next();
@@ -68,12 +68,14 @@ io.on("connection", (socket) => {
         const { room, message, replyToId } = payload;
         if (!room || !message?.trim()) return;
 
+        // verify membership
         const member = await prisma.roomMember.findUnique({
           where: { roomId_userId: { roomId: room, userId: me } },
           select: { roomId: true },
         });
         if (!member) return;
 
+        // persist + include sender object right here
         const saved = await prisma.message.create({
           data: {
             roomId: room,
@@ -81,23 +83,31 @@ io.on("connection", (socket) => {
             content: message.trim(),
             replyToId: replyToId ?? null,
           },
+          include: {
+            sender: {
+              select: { id: true, displayName: true, avatarUrl: true },
+            },
+          },
         });
 
+        // bump room activity
         await prisma.room.update({
           where: { id: room },
           data: { lastMessageAt: saved.createdAt },
         });
 
-        const payloadOut = {
+        // normalize payload to your wire format
+        const out = {
           id: saved.id,
-          roomId: room,
-          senderId: me,
+          roomId: saved.roomId,
           content: saved.content,
           createdAt: saved.createdAt,
+          // optional: replyToId: saved.replyToId,
+          sender: saved.sender, // { id, displayName, avatarUrl }
         };
 
-        io.to(room).emit("message:new", payloadOut);
-        ack?.(payloadOut);
+        io.to(room).emit("message:new", out);
+        ack?.(out);
       } catch (e) {
         console.error("[socket.send_message]", e);
         ack?.({ error: "Failed to send" });

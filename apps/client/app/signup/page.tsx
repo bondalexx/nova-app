@@ -33,33 +33,47 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="bg-blue-950 h-screen w-screen text-white">
-      <input
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        placeholder="email"
-      />
-      <input
-        type="text"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        placeholder="display name"
-      />
+    <div className="bg-[#0A0A0A] h-screen w-screen text-white flex justify-center items-center">
+      <div className="flex flex-col gap-4 justify-center items-center">
+        <h1 className="text-[40px] font-bold text-white">
+          Create account in Nova
+        </h1>
+        <input
+          type="text"
+          value={userName}
+          onChange={(e) => setUserName(e.target.value)}
+          placeholder="User name"
+          className="h-[48px] w-[320px] rounded-lg  border border-[#242424] px-4 text-white placeholder:text-[#8F8F8F] text-[18px] "
+        />
+        <input
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="Email"
+          className="h-[48px] w-[320px] rounded-lg  border border-[#242424] px-4 text-white placeholder:text-[#8F8F8F] text-[18px] "
+        />
+        <input
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Display name"
+          className="h-[48px] w-[320px] rounded-lg  border border-[#242424] px-4 text-white placeholder:text-[#8F8F8F] text-[18px] "
+        />
 
-      <input
-        type="text"
-        value={userName}
-        onChange={(e) => setUserName(e.target.value)}
-        placeholder="user name"
-      />
-      <input
-        type="password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        placeholder="password"
-      />
+        <input
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="Password"
+          className="h-[48px] w-[320px] rounded-lg  border border-[#242424] px-4 text-white placeholder:text-[#8F8F8F] text-[18px] "
+        />
 
-      <button onClick={handleLogin}>Sign up</button>
+        <button
+          className="h-[48px] w-[320px] rounded-lg text-[#0A0A0A] bg-white text-[18px] cursor-pointer"
+          onClick={handleLogin}
+        >
+          Sign up
+        </button>
+      </div>
     </div>
   );
 }

@@ -80,10 +80,9 @@ export async function postDirectRoom(req: Request, res: Response) {
 export async function listRooms(req: Request, res: Response) {
   try {
     const me = req.user!.id;
-    const scope =
-      String(req.query.scope || "recent").toLowerCase() === "all"
-        ? "all"
-        : "recent";
+
+    const scopeParam = String(req.query.scope || "recent").toLowerCase();
+    const scope: "recent" | "all" = scopeParam === "all" ? "all" : "recent";
 
     const whereBase = { members: { some: { userId: me } } } as const;
     const where =
@@ -92,13 +91,25 @@ export async function listRooms(req: Request, res: Response) {
         : whereBase;
 
     const rooms = await prisma.room.findMany({
-      where,
+      where, // ✅ actually use the computed filter
       orderBy: [
         { lastMessageAt: "desc" }, // active first
         { createdAt: "desc" }, // tie-breaker
       ],
       include: {
-        members: { select: { userId: true, lastReadAt: true, role: true } },
+        members: {
+          select: {
+            userId: true,
+            lastReadAt: true,
+            user: {
+              select: {
+                id: true,
+                displayName: true,
+                avatarUrl: true,
+              },
+            },
+          },
+        },
         messages: {
           take: 1,
           orderBy: { createdAt: "desc" },
@@ -112,15 +123,29 @@ export async function listRooms(req: Request, res: Response) {
       },
     });
 
-    // Compute unread counts
+    // Compute unread counts (per-room)
     const enriched = await Promise.all(
       rooms.map(async (r) => {
         const mine = r.members.find((m) => m.userId === me);
         const after = mine?.lastReadAt ?? new Date(0);
+
         const unread = await prisma.message.count({
-          where: { roomId: r.id, deletedAt: null, createdAt: { gt: after } },
+          where: {
+            roomId: r.id,
+            deletedAt: null,
+            createdAt: { gt: after },
+          },
         });
-        return { ...r, unreadCount: unread };
+
+        // You may also want to surface "otherUser" for DIRECT rooms:
+        const otherMember = r.members.find((m) => m.userId !== me);
+        const otherUser = otherMember?.user ?? null;
+
+        return {
+          ...r,
+          unreadCount: unread,
+          otherUser, // convenient for client DM list
+        };
       })
     );
 
