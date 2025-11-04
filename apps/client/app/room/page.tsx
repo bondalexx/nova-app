@@ -31,6 +31,25 @@ export default function Room() {
   const scrollToEnd = () =>
     listEndRef.current?.scrollIntoView({ behavior: "smooth" });
 
+  useEffect(() => {
+    const sock = socketRef.current;
+    if (!sock) return;
+
+    // leave previous room and join new one
+    // (only if your server supports leave_room; if not, just join)
+    sock.emit("leave_room", roomRef.current); // safe no-op if server ignores
+    roomRef.current = String(chatId);
+
+    // ask server to ack the join so we *know* it saw us
+    sock.emit(
+      "join_room",
+      roomRef.current,
+      (ack?: { ok?: boolean; room?: string; reason?: string }) => {
+        console.log("[join ack]", ack);
+      }
+    );
+  }, [chatId]);
+
   // connect & subscribe
   useEffect(() => {
     if (!accessToken) return;
